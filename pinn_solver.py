@@ -1,0 +1,166 @@
+import os
+import torch
+import torch.nn as nn
+import numpy as np
+from supabase import create_client, Client
+from dotenv import dotenv_values
+
+# .env 파일에서 환경 변수 로드
+env_vals = dotenv_values(dotenv_path='.env.loval')
+
+# --- Supabase 설정 ---
+# 환경 변수에서 Supabase 정보 가져오기
+# .env.loval 파일에 SUPABASE_URL="your_supabase_url" SUPABASE_ANON_KEY="your_supabase_anon_key" 형식으로 저장하거나 직접 입력
+url: str = env_vals.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
+key: str = env_vals.get("SUPABASE_ANON_KEY", "YOUR_SUPABASE_ANON_KEY")
+
+# Supabase 클라이언트 생성 (연결 정보가 유효할 경우)
+supabase: Client = None
+if url != "YOUR_SUPABASE_URL" and key != "YOUR_SUPABASE_ANON_KEY":
+    try:
+        supabase = create_client(url, key)
+        print("Supabase client created successfully.")
+    except Exception as e:
+        print(f"Failed to create Supabase client: {e}")
+        print("Training logs will not be saved to Supabase.")
+else:
+    print("Supabase credentials not found. Training logs will not be saved.")
+
+# --- GPU 가속 설정 ---
+# MPS(Apple Silicon), CUDA 또는 CPU 자동 선택
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+    print("Using MPS (Apple Silicon GPU)")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("Using CUDA")
+else:
+    device = torch.device("cpu")
+    print("Using CPU")
+
+# --- PINN 모델 정의 ---
+# 1차원 입력을 받아 1차원 값을 출력하는 간단한 신경망
+class PINN(nn.Module):
+    def __init__(self):
+        super(PINN, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(1, 50),
+            nn.Tanh(),
+            nn.Linear(50, 50),
+            nn.Tanh(),
+            nn.Linear(50, 50),
+            nn.Tanh(),
+            nn.Linear(50, 1)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+# --- Physics Loss 계산 ---
+# 1D Helmholtz Equation: u_xx + k^2 * u = 0
+# PDE 잔차(residual)를 계산하여 물리 손실(Physics Loss)로 반환
+def physics_loss(model, x, k):
+    u = model(x)
+    
+    # u_x: u의 x에 대한 1차 미분
+    u_x = torch.autograd.grad(
+        u, x, 
+        grad_outputs=torch.ones_like(u), 
+        create_graph=True
+    )[0]
+    
+    # u_xx: u의 x에 대한 2차 미분
+    u_xx = torch.autograd.grad(
+        u_x, x, 
+        grad_outputs=torch.ones_like(u_x), 
+        create_graph=True
+    )[0]
+    
+    # Helmholtz 방정식의 잔차 계산
+    residual = u_xx + k**2 * u
+    
+    # 잔차의 Mean Squared Error를 손실로 사용
+    return nn.MSELoss()(residual, torch.zeros_like(residual))
+
+# --- Supabase 로깅 함수 ---
+def log_to_supabase(epoch, loss, boundary_loss, pde_loss):
+    if supabase:
+        try:
+            data = {
+                "epoch": epoch,
+                "total_loss": float(loss),
+                "boundary_loss": float(boundary_loss),
+                "physics_loss": float(pde_loss)
+            }
+            # 'training_logs' 테이블에 데이터 삽입
+            supabase.table("training_logs").insert(data).execute()
+        except Exception as e:
+            print(f"Epoch {epoch}: Failed to log to Supabase. Error: {e}")
+
+
+# --- 메인 학습 함수 ---
+def train_pinn():
+    # 파라미터 설정
+    k = 1.0  # Helmholtz 방정식의 파수(wavenumber)
+    epochs = 10000
+    lr = 1e-3
+    
+    # 모델, 옵티마이저, 손실 함수 초기화
+    pinn_model = PINN().to(device)
+    optimizer = torch.optim.Adam(pinn_model.parameters(), lr=lr)
+    loss_fn = nn.MSELoss()
+
+    # 학습 데이터 생성
+    # 경계 조건 (Boundary Conditions) x=0, x=1
+    # u(0) = 0, u(1) = sin(k)
+    bc_points = torch.tensor([[0.0], [1.0]], device=device, dtype=torch.float32)
+    bc_values = torch.tensor([[0.0], [np.sin(k)]], device=device, dtype=torch.float32)
+
+    # PDE 손실을 계산할 점들 (Collocation Points)
+    # 0과 1 사이에서 100개의 점을 무작위로 생성
+    collocation_points = torch.rand(100, 1, device=device, requires_grad=True, dtype=torch.float32)
+
+    print("Starting training...")
+    # 학습 루프
+    for epoch in range(epochs + 1):
+        optimizer.zero_grad()
+        
+        # 1. 경계 손실 (Boundary Loss) 계산
+        bc_pred = pinn_model(bc_points)
+        loss_bc = loss_fn(bc_pred, bc_values)
+        
+        # 2. 물리 손실 (Physics Loss / PDE Loss) 계산
+        loss_pde = physics_loss(pinn_model, collocation_points, k)
+        
+        # 3. 총 손실 (Total Loss)
+        # 두 손실에 가중치를 두어 합산할 수도 있음 (e.g., loss = loss_bc + 0.1 * loss_pde)
+        total_loss = loss_bc + loss_pde
+        
+        # 역전파 및 가중치 업데이트
+        total_loss.backward()
+        optimizer.step()
+        
+        # 로그 출력 및 Supabase 기록
+        if epoch % 1000 == 0:
+            print(f"Epoch [{epoch}/{epochs}], Total Loss: {total_loss.item():.6f}, BC Loss: {loss_bc.item():.6f}, PDE Loss: {loss_pde.item():.6f}")
+            log_to_supabase(epoch, total_loss.item(), loss_bc.item(), loss_pde.item())
+    
+    print("Training finished.")
+
+    # 학습된 모델 저장 (옵션)
+    torch.save(pinn_model.state_dict(), "pinn_helmholtz_model.pth")
+    print("Model saved to pinn_helmholtz_model.pth")
+
+
+if __name__ == "__main__":
+    # Supabase에 'training_logs' 테이블이 없으면 생성해야 합니다.
+    # 예시 SQL:
+    # CREATE TABLE training_logs (
+    #   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    #   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    #   epoch INT,
+    #   total_loss FLOAT,
+    #   boundary_loss FLOAT,
+    #   physics_loss FLOAT
+    # );
+    train_pinn()
