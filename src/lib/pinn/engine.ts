@@ -87,3 +87,32 @@ export const simulateTrainingStep = (epoch: number, k: number) => {
         timestamp: new Date().toISOString()
     };
 };
+
+/**
+ * Generates a 2D wavefield (heatmap data) based on the current epoch.
+ * Simulates the field converging towards a solution.
+ */
+export const generateWavefield = (epoch: number, resolution: number, k: number) => {
+    const grid = [];
+    const convergence = 1 - Math.exp(-epoch / 100);
+
+    for (let i = 0; i < resolution; i++) {
+        const row = [];
+        for (let j = 0; j < resolution; j++) {
+            const x = (j / resolution) * 2 - 1;
+            const y = (i / resolution) * 2 - 1;
+
+            // Target pattern: sin(k*x) * cos(k*y)
+            const target = (Math.sin(k * x * Math.PI) * Math.cos(k * y * Math.PI) + 1) / 2;
+
+            // Random field for initial state
+            const initial = Math.random();
+
+            // Converged field
+            const val = initial * (1 - convergence) + target * convergence;
+            row.push(val);
+        }
+        grid.push(row);
+    }
+    return grid;
+};
