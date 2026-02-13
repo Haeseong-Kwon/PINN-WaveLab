@@ -139,3 +139,73 @@ export const generateWavefield = (epoch: number, resolution: number, k: number) 
     }
     return grid;
 };
+
+/**
+ * Multi-physics simulation (Wave + Diffusion)
+ * Simulates a system where wave propagation and diffusion coexist.
+ */
+export const simulateMultiPhysicsStep = (
+    epoch: number,
+    k: number,
+    coupling: number = 0.5,
+    adaptive: boolean = false
+) => {
+    const speedFactor = adaptive ? 1.5 : 1.0;
+    const baseLoss = 0.5 * Math.exp(-(epoch * speedFactor) / 100);
+    const physicsResidual = 0.4 * Math.exp(-(epoch * speedFactor) / 150) * (1 + 0.2 * Math.sin(epoch / 50));
+
+    // Coupling effect: higher coupling slightly increases initial complexity but can stabilize later
+    const couplingEffect = coupling * 0.1 * Math.cos(epoch / 100);
+    const efficiencyGain = adaptive ? 0.7 : 1.0;
+
+    const pLoss = (physicsResidual + couplingEffect) * efficiencyGain;
+    const dLoss = baseLoss * efficiencyGain;
+
+    return {
+        epoch,
+        dataLoss: dLoss,
+        physicsLoss: pLoss,
+        boundaryLoss: 0.05 * dLoss,
+        totalLoss: dLoss + pLoss,
+        weightData: 1.0,
+        weightPhysics: 1.0 + coupling,
+        timestamp: new Date().toISOString()
+    };
+};
+
+/**
+ * Generates a field representing multi-physics interaction.
+ */
+export const generateMultiPhysicsField = (epoch: number, resolution: number, k: number, coupling: number) => {
+    const field: number[][] = [];
+    const waveFreq = k;
+    const diffusionRate = coupling * 0.2;
+    const convergence = 1 - Math.exp(-epoch / 200);
+
+    for (let i = 0; i < resolution; i++) {
+        const row: number[] = [];
+        for (let j = 0; j < resolution; j++) {
+            const x = (j / resolution) * 2 - 1;
+            const y = (i / resolution) * 2 - 1;
+            const r = Math.sqrt(x * x + y * y);
+
+            // Wave component (Target)
+            const targetWave = (Math.sin(waveFreq * x * Math.PI) * Math.cos(waveFreq * y * Math.PI) + 1) / 2;
+
+            // Diffusion component (Target)
+            const targetDiffusion = Math.exp(-(r * r) / (0.1 + diffusionRate));
+
+            // Combined Target
+            const target = (1 - coupling) * targetWave + coupling * targetDiffusion;
+
+            // Initial random state
+            const initial = Math.random();
+
+            // Converged field
+            const val = initial * (1 - convergence) + target * convergence;
+            row.push(val);
+        }
+        field.push(row);
+    }
+    return field;
+};

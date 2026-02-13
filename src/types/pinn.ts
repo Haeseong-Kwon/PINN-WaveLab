@@ -46,3 +46,23 @@ export interface PINNModel {
     currentEpoch: number;
     bestLoss: number;
 }
+
+export interface ResearchReport {
+    id: string;
+    modelId: string;
+    title: string;
+    content: string; // Markdown format
+    createdAt: string;
+    metadata?: {
+        epochCount: number;
+        avgLoss: number;
+        physicsType: string;
+    };
+}
+
+export interface MultiPhysicsConfig {
+    enabled: boolean;
+    primaryEquation: 'helmholtz' | 'wave';
+    secondaryEquation: 'diffusion' | 'poisson';
+    couplingCoefficient: number;
+}

@@ -5,12 +5,19 @@ import {
     XAxis, YAxis, Tooltip, ResponsiveContainer, Area, ComposedChart, Line
 } from 'recharts';
 import { Play, Pause, RotateCcw, Sliders, LayoutDashboard, Brain, Box, Square, BarChart3 } from 'lucide-react';
-import { simulateTrainingStep, generateWavefield, getHighResidualMask } from '@/lib/pinn/engine';
-import { LossLog } from '@/types/pinn';
-import FormulaEditor from '@/components/pinn/FormulaEditor';
-import WavefieldCanvas from '@/components/visualize/WavefieldCanvas';
-import WaveViewer3D from '@/components/visualize/WaveViewer3D';
-import SamplingControl from '@/components/pinn/SamplingControl';
+import { simulateTrainingStep, generateWavefield, getHighResidualMask, simulateMultiPhysicsStep, generateMultiPhysicsField } from '@/lib/pinn/engine';
+import { LossLog, MultiPhysicsConfig } from '@/types/pinn';
+import dynamic from 'next/dynamic';
+
+const FormulaEditor = dynamic(() => import('@/components/pinn/FormulaEditor'), { ssr: false });
+const WavefieldCanvas = dynamic(() => import('@/components/visualize/WavefieldCanvas'), { ssr: false });
+const WaveViewer3D = dynamic(() => import('@/components/visualize/WaveViewer3D'), { ssr: false });
+const SamplingControl = dynamic(() => import('@/components/pinn/SamplingControl'), { ssr: false });
+const MultiPhysicsPanel = dynamic(() => import('@/components/pinn/MultiPhysicsPanel'), { ssr: false });
+const ReportGenerator = dynamic(() => import('@/components/research/ReportGenerator'), {
+    ssr: false,
+    loading: () => <div className="h-[400px] bg-[#111114] border border-slate-800 rounded-2xl animate-pulse" />
+});
 
 const TrainingDashboard = () => {
     const [logs, setLogs] = useState<LossLog[]>([]);
@@ -31,6 +38,14 @@ const TrainingDashboard = () => {
     const [learningRate, setLearningRate] = useState(0.001);
     const [physWeight, setPhysWeight] = useState(1.0);
 
+    // Multi-physics State
+    const [multiPhysics, setMultiPhysics] = useState<MultiPhysicsConfig>({
+        enabled: false,
+        primaryEquation: 'helmholtz',
+        secondaryEquation: 'diffusion',
+        couplingCoefficient: 0.3
+    });
+
     const resolution = 50;
 
     // Comparison Data Logic
@@ -49,11 +64,19 @@ const TrainingDashboard = () => {
                 setEpoch(prev => {
                     const nextEpoch = prev + 1;
 
-                    // Simulation updates with adaptive flag
-                    const newLog = simulateTrainingStep(nextEpoch, k, adaptiveEnabled);
+                    // Simulation updates with adaptive and multi-physics flags
+                    let newLog;
+                    if (multiPhysics.enabled) {
+                        newLog = simulateMultiPhysicsStep(nextEpoch, k, multiPhysics.couplingCoefficient, adaptiveEnabled);
+                    } else {
+                        newLog = simulateTrainingStep(nextEpoch, k, adaptiveEnabled);
+                    }
+
                     setLogs(current => [...current.slice(-49), newLog as LossLog]);
 
-                    const newField = generateWavefield(nextEpoch, resolution, k);
+                    const newField = multiPhysics.enabled
+                        ? generateMultiPhysicsField(nextEpoch, resolution, k, multiPhysics.couplingCoefficient)
+                        : generateWavefield(nextEpoch, resolution, k);
                     setWavefield(newField);
 
                     const newMask = getHighResidualMask(resolution, k, nextEpoch);
@@ -64,19 +87,25 @@ const TrainingDashboard = () => {
             }, 150);
         }
         return () => clearInterval(interval);
-    }, [isTraining, k, adaptiveEnabled]);
+    }, [isTraining, k, adaptiveEnabled, multiPhysics.enabled, multiPhysics.couplingCoefficient]);
 
     // Initial states
     useEffect(() => {
-        setWavefield(generateWavefield(0, resolution, k));
+        const field = multiPhysics.enabled
+            ? generateMultiPhysicsField(0, resolution, k, multiPhysics.couplingCoefficient)
+            : generateWavefield(0, resolution, k);
+        setWavefield(field);
         setResidualMask(getHighResidualMask(resolution, k, 0));
-    }, [k]);
+    }, [k, multiPhysics.enabled, multiPhysics.couplingCoefficient]);
 
     const handleToggleTraining = () => setIsTraining(!isTraining);
     const handleReset = () => {
         setIsTraining(false);
         setLogs([]);
-        setWavefield(generateWavefield(0, resolution, k));
+        const field = multiPhysics.enabled
+            ? generateMultiPhysicsField(0, resolution, k, multiPhysics.couplingCoefficient)
+            : generateWavefield(0, resolution, k);
+        setWavefield(field);
         setResidualMask(getHighResidualMask(resolution, k, 0));
         setEpoch(0);
     };
@@ -97,7 +126,7 @@ const TrainingDashboard = () => {
                                 {isTraining ? 'Engine Running' : 'Idle'}
                             </span>
                             <span>•</span>
-                            <span>Phase 3: Adaptive Ops</span>
+                            <span>Phase 4: Multi-physics AI</span>
                         </div>
                     </div>
                 </div>
@@ -185,6 +214,11 @@ const TrainingDashboard = () => {
                             </div>
                         </div>
                     </div>
+
+                    <MultiPhysicsPanel
+                        config={multiPhysics}
+                        onChange={setMultiPhysics}
+                    />
                 </div>
 
                 {/* Middle Column: Visualization */}
@@ -283,6 +317,12 @@ const TrainingDashboard = () => {
                             </p>
                         </div>
                     </div>
+
+                    <ReportGenerator
+                        logs={logs}
+                        pdeConfig={{ parameterK: k }}
+                        isMultiPhysics={multiPhysics.enabled}
+                    />
                 </div>
             </div>
         </div>
