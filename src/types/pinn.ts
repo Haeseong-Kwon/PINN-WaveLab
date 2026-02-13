@@ -29,6 +29,10 @@ export interface LossLog {
     physicsLoss: number;
     boundaryLoss: number;
     totalLoss: number;
+    // Compatibility with snake_case backends
+    physics_loss?: number;
+    total_loss?: number;
+    data_loss?: number;
     weightData: number;
     weightPhysics: number;
     timestamp: string;

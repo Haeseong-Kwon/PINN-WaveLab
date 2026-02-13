@@ -65,14 +65,16 @@ export const computeHelmholtzResidual = (
 };
 
 /**
- * Mock training engine to simulate loss convergence for the UI.
+ * Mock training engine with adaptive sampling capability.
+ * When adaptive sampling is enabled, the convergence is accelerated in high-residual regions.
  */
-export const simulateTrainingStep = (epoch: number, k: number) => {
-    const dataLoss = 0.5 * Math.exp(-epoch / 50) + 0.05 * Math.random() + (k * 0.001);
-    const physicsLoss = 0.8 * Math.exp(-epoch / 80) + 0.08 * Math.random();
-    const boundaryLoss = 0.3 * Math.exp(-epoch / 30) + 0.02 * Math.random();
+export const simulateTrainingStep = (epoch: number, k: number, adaptiveEnabled: boolean = false) => {
+    const speedFactor = adaptiveEnabled ? 1.5 : 1.0;
 
-    // Weighting simulation: dynamic adjustment
+    const dataLoss = 0.5 * Math.exp(-(epoch * speedFactor) / 50) + 0.05 * Math.random() + (k * 0.001);
+    const physicsLoss = 0.8 * Math.exp(-(epoch * speedFactor) / 80) + 0.08 * Math.random();
+    const boundaryLoss = 0.3 * Math.exp(-(epoch * speedFactor) / 30) + 0.02 * Math.random();
+
     const weightPhysics = 1.0 + 0.5 * Math.sin(epoch / 10);
     const weightData = 1.0;
 
@@ -86,6 +88,27 @@ export const simulateTrainingStep = (epoch: number, k: number) => {
         weightPhysics,
         timestamp: new Date().toISOString()
     };
+};
+
+/**
+ * Identifies high-residual areas for adaptive sampling visualization.
+ */
+export const getHighResidualMask = (resolution: number, k: number, epoch: number) => {
+    const mask = [];
+    const noise = Math.max(0, 1 - epoch / 200);
+
+    for (let i = 0; i < resolution; i++) {
+        const row = [];
+        for (let j = 0; j < resolution; j++) {
+            const x = (j / resolution) * 2 - 1;
+            const y = (i / resolution) * 2 - 1;
+            // Residual peaks at boundaries and complex patterns
+            const residual = Math.abs(Math.sin(k * x * 2) * Math.cos(k * y * 2)) * noise + (Math.random() * 0.1);
+            row.push(residual > 0.4 ? 1 : 0);
+        }
+        mask.push(row);
+    }
+    return mask;
 };
 
 /**

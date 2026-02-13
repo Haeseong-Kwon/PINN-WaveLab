@@ -6,9 +6,10 @@ import { Maximize2, Layers } from 'lucide-react';
 interface WavefieldCanvasProps {
     data: number[][];
     resolution: number;
+    title?: string;
 }
 
-const WavefieldCanvas: React.FC<WavefieldCanvasProps> = ({ data, resolution }) => {
+const WavefieldCanvas: React.FC<WavefieldCanvasProps> = ({ data, resolution, title }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -44,7 +45,7 @@ const WavefieldCanvas: React.FC<WavefieldCanvasProps> = ({ data, resolution }) =
         <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col h-full">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wider">
-                    <Layers size={16} /> Real-time Wavefield Predictor
+                    <Layers size={16} /> {title || "Wavefield Predictor"}
                 </h2>
                 <div className="flex gap-2 text-slate-600">
                     <Maximize2 size={16} className="cursor-pointer hover:text-slate-400 transition-colors" />

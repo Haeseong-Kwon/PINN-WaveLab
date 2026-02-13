@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Play, Pause, RotateCcw, Activity, Zap, Settings, Server, XCircle } from 'lucide-react';
+import { Play, Pause, Activity, Zap, Settings, Server, XCircle } from 'lucide-react';
 import { LossLog } from '@/types/pinn';
 import WavefieldCanvas from '@/components/visualize/WavefieldCanvas';
 
@@ -25,7 +25,7 @@ const Dashboard = () => {
       console.log("WebSocket is already open.");
       return;
     }
-    
+
     setLogs([]);
     setEpoch(0);
     setPinnPrediction([]);
@@ -48,7 +48,7 @@ const Dashboard = () => {
 
     ws.current.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      
+
       if (message.status === 'solving_fdm') {
         setStatus('Solving Ground Truth (FDM)...');
       } else if (message.status === 'fdm_solved') {
@@ -68,7 +68,7 @@ const Dashboard = () => {
       } else { // Regular epoch update
         setEpoch(message.epoch);
         setLogs(current => [...current.slice(-99), message as LossLog]);
-        if(message.wavefield_prediction) {
+        if (message.wavefield_prediction) {
           setPinnPrediction(message.wavefield_prediction);
         }
       }
@@ -81,7 +81,7 @@ const Dashboard = () => {
 
     ws.current.onclose = () => {
       console.log('WebSocket connection closed.');
-      if(status.startsWith('Training')) setStatus('Disconnected.');
+      if (status.startsWith('Training')) setStatus('Disconnected.');
       ws.current = null;
     };
   }, [waveNumber, status]);
@@ -128,13 +128,13 @@ const Dashboard = () => {
         <div className="lg:col-span-3 space-y-6">
           {/* Loss Chart */}
           <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl overflow-hidden">
-             <LossChart logs={logs} />
+            <LossChart logs={logs} />
           </div>
 
           {/* Wavefield Visualizers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <WavefieldCanvas data={pinnPrediction} resolution={64} title="PINN Prediction" />
-             <WavefieldCanvas data={fdmGroundTruth} resolution={64} title="FDM Ground Truth" />
+            <WavefieldCanvas data={pinnPrediction} resolution={64} title="PINN Prediction" />
+            <WavefieldCanvas data={fdmGroundTruth} resolution={64} title="FDM Ground Truth" />
           </div>
         </div>
       </div>
@@ -144,7 +144,7 @@ const Dashboard = () => {
 
 // --- Sub-components for better organization ---
 
-const ControlsPanel = ({ waveNumber, setWaveNumber, isTraining }: any) => (
+const ControlsPanel = ({ waveNumber, setWaveNumber, isTraining }: { waveNumber: number, setWaveNumber: (val: number) => void, isTraining: boolean }) => (
   <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl">
     <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 uppercase tracking-wider">
       <Settings size={16} /> Parameters
@@ -167,14 +167,14 @@ const ControlsPanel = ({ waveNumber, setWaveNumber, isTraining }: any) => (
   </div>
 );
 
-const StatsPanel = ({ epoch, lastLog, status }: { epoch: number, lastLog: LossLog | null, status: string}) => {
+const StatsPanel = ({ epoch, lastLog, status }: { epoch: number, lastLog: LossLog | null, status: string }) => {
   const getStatusIcon = () => {
     if (status.includes('Training') || status.includes('Solving')) return <Activity size={16} className="text-blue-400" />;
     if (status.includes('Error') || status.includes('Divergence')) return <XCircle size={16} className="text-rose-500" />;
     return <Server size={16} className="text-slate-500" />;
   }
 
-  return(
+  return (
     <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 uppercase tracking-wider">
         <Zap size={16} /> Live Stats
@@ -182,8 +182,8 @@ const StatsPanel = ({ epoch, lastLog, status }: { epoch: number, lastLog: LossLo
       <div className="space-y-3">
         <StatItem label="Status" value={status} icon={getStatusIcon()} />
         <StatItem label="Current Epoch" value={epoch.toString()} />
-        <StatItem label="Physics Loss" value={lastLog ? lastLog.physics_loss.toExponential(4) : "0.00"} />
-        <StatItem label="Total Loss" value={lastLog ? lastLog.total_loss.toExponential(4) : "0.00"} />
+        <StatItem label="Physics Loss" value={lastLog?.physics_loss ? lastLog.physics_loss.toExponential(4) : "0.00"} />
+        <StatItem label="Total Loss" value={lastLog?.total_loss ? lastLog.total_loss.toExponential(4) : "0.00"} />
       </div>
     </div>
   );
@@ -199,7 +199,7 @@ const StatItem = ({ label, value, icon }: { label: string, value: string, icon?:
   </div>
 );
 
-const LossChart = ({logs}: {logs: LossLog[]}) => (
+const LossChart = ({ logs }: { logs: LossLog[] }) => (
   <>
     <h2 className="flex items-center gap-2 text-lg font-medium mb-8">
       <Activity size={20} className="text-blue-500" />
@@ -221,9 +221,13 @@ const LossChart = ({logs}: {logs: LossLog[]}) => (
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
           <XAxis dataKey="epoch" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
           <YAxis stroke="#475569" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => val.toExponential(1)} type="number" domain={['auto', 'auto']} />
-          <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }} formatter={(value: number) => value.toExponential(4)} />
-          <Area type="monotone" dataKey="total_loss" name="Total Loss" stroke="#3b82f6" strokeWidth={2} fill="url(#colorTotal)" isAnimationActive={false} />
-          <Area type="monotone" dataKey="physics_loss" name="Physics Loss" stroke="#6366f1" strokeWidth={2} fill="url(#colorPhysics)" isAnimationActive={false} />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }} formatter={(value: any) => {
+            if (typeof value === 'number') return value.toExponential(4);
+            return value;
+          }} />
+          <Area type="monotone" dataKey="total_loss" name="Total Loss" stroke="#3b82f6" strokeWidth={2} fill="url(#colorTotal)" isAnimationActive={false} connectNulls />
+          <Area type="monotone" dataKey="physics_loss" name="Physics Loss" stroke="#6366f1" strokeWidth={2} fill="url(#colorPhysics)" isAnimationActive={false} connectNulls />
         </AreaChart>
       </ResponsiveContainer>
     </div>
