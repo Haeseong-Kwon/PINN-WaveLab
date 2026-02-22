@@ -7,6 +7,7 @@ import {
 import { Play, Pause, Activity, Zap, Settings, Server, XCircle } from 'lucide-react';
 import { LossLog } from '@/types/pinn';
 import WavefieldCanvas from '@/components/visualize/WavefieldCanvas';
+import { motion } from 'framer-motion';
 
 // Backend WebSocket URL
 const WS_URL = 'ws://127.0.0.1:8000/ws/pinn-train';
@@ -97,46 +98,72 @@ const Dashboard = () => {
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 p-6 font-sans">
-      <header className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-            PINN WaveLab
+    <div className="min-h-screen bg-[#020617] text-slate-100 p-8 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-between items-center mb-10 pb-6 border-b border-white/5 relative"
+      >
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-blue-500/10 blur-[150px] pointer-events-none rounded-full" />
+        <div className="relative z-10">
+          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+            PINN WaveLab <span className="text-2xl font-medium text-slate-500">v2.0</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Real-time PINN Training & Visualization Backend</p>
+          <p className="text-slate-400 text-sm mt-2 tracking-wide">Physics-Informed Neural Network Real-time Training Dashboard</p>
         </div>
-        <div className="flex gap-4">
-          <button
+        <div className="flex gap-4 relative z-10">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={isTraining ? handleStopTraining : handleStartTraining}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full transition-all ${isTraining
-              ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20'
-              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20'
+            className={`flex items-center gap-3 px-8 py-3 rounded-xl font-semibold transition-all shadow-xl backdrop-blur-md border ${isTraining
+              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/40 hover:shadow-rose-500/20'
+              : 'bg-blue-600/90 text-white border-blue-500/50 hover:bg-blue-500 hover:border-blue-400 hover:shadow-blue-500/30'
               }`}
           >
-            {isTraining ? <><Pause size={18} /> Stop</> : <><Play size={18} /> Start Training</>}
-          </button>
+            {isTraining ? <><Pause size={20} className="animate-pulse" /> Stop Simulation</> : <><Play size={20} /> Launch Neural Solver</>}
+          </motion.button>
         </div>
-      </header>
+      </motion.header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-1 space-y-8"
+        >
           {/* Controls and Stats */}
           <ControlsPanel waveNumber={waveNumber} setWaveNumber={setWaveNumber} isTraining={isTraining} />
           <StatsPanel epoch={epoch} lastLog={lastLog} status={status} />
-        </div>
+        </motion.div>
 
-        <div className="lg:col-span-3 space-y-6">
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-3 space-y-8"
+        >
           {/* Loss Chart */}
-          <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl overflow-hidden">
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             <LossChart logs={logs} />
           </div>
 
           {/* Wavefield Visualizers */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <WavefieldCanvas data={pinnPrediction} resolution={64} title="PINN Prediction" />
-            <WavefieldCanvas data={fdmGroundTruth} resolution={64} title="FDM Ground Truth" />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-blue-500/30 transition-colors duration-500">
+              <div className="h-[400px]">
+                <WavefieldCanvas data={pinnPrediction} resolution={64} title="PINN Reconstructed Field" />
+              </div>
+            </div>
+            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-indigo-500/30 transition-colors duration-500">
+              <div className="h-[400px]">
+                <WavefieldCanvas data={fdmGroundTruth} resolution={64} title="FDM Ground Truth (Reference)" />
+              </div>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -145,23 +172,31 @@ const Dashboard = () => {
 // --- Sub-components for better organization ---
 
 const ControlsPanel = ({ waveNumber, setWaveNumber, isTraining }: { waveNumber: number, setWaveNumber: (val: number) => void, isTraining: boolean }) => (
-  <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl">
-    <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 uppercase tracking-wider">
-      <Settings size={16} /> Parameters
+  <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-2xl relative overflow-hidden">
+    <div className="absolute top-0 right-0 p-32 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none" />
+    <h2 className="flex items-center gap-3 text-sm font-bold text-slate-300 mb-8 uppercase tracking-widest relative z-10">
+      <Settings size={18} className="text-blue-400" /> System Params
     </h2>
-    <div className="space-y-4">
-      <label className="block text-xs text-slate-500 uppercase tracking-wide">Wave Number (k)</label>
+    <div className="space-y-6 relative z-10">
+      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest">Wave Number (k)</label>
       <input
         type="range" min="0.1" max="10" step="0.1"
         value={waveNumber}
         onChange={(e) => setWaveNumber(parseFloat(e.target.value))}
         disabled={isTraining}
-        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-50"
+        className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500 disabled:opacity-30 disabled:cursor-not-allowed hover:accent-blue-400 transition-all"
       />
-      <div className="flex justify-between text-sm">
-        <span className="text-slate-500">0.1</span>
-        <span className="text-blue-400 font-mono">{waveNumber.toFixed(1)}</span>
-        <span className="text-slate-500">10.0</span>
+      <div className="flex justify-between text-sm font-medium">
+        <span className="text-slate-600">0.1</span>
+        <motion.span
+          key={waveNumber}
+          initial={{ scale: 1.5, color: '#60a5fa' }}
+          animate={{ scale: 1, color: '#38bdf8' }}
+          className="font-mono bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20 shadow-inner"
+        >
+          {waveNumber.toFixed(1)}
+        </motion.span>
+        <span className="text-slate-600">10.0</span>
       </div>
     </div>
   </div>
@@ -169,65 +204,80 @@ const ControlsPanel = ({ waveNumber, setWaveNumber, isTraining }: { waveNumber: 
 
 const StatsPanel = ({ epoch, lastLog, status }: { epoch: number, lastLog: LossLog | null, status: string }) => {
   const getStatusIcon = () => {
-    if (status.includes('Training') || status.includes('Solving')) return <Activity size={16} className="text-blue-400" />;
-    if (status.includes('Error') || status.includes('Divergence')) return <XCircle size={16} className="text-rose-500" />;
-    return <Server size={16} className="text-slate-500" />;
+    if (status.includes('Training') || status.includes('Solving')) return <Activity size={18} className="text-blue-400 animate-pulse" />;
+    if (status.includes('Error') || status.includes('Divergence')) return <XCircle size={18} className="text-rose-500" />;
+    return <Server size={18} className="text-slate-400" />;
   }
 
   return (
-    <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 uppercase tracking-wider">
-        <Zap size={16} /> Live Stats
+    <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-2xl relative overflow-hidden">
+      <div className="absolute bottom-0 left-0 p-32 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+      <h2 className="flex items-center gap-3 text-sm font-bold text-slate-300 mb-8 uppercase tracking-widest relative z-10">
+        <Zap size={18} className="text-indigo-400" /> Live Telemetry
       </h2>
-      <div className="space-y-3">
-        <StatItem label="Status" value={status} icon={getStatusIcon()} />
-        <StatItem label="Current Epoch" value={epoch?.toString() ?? '0'} />
-        <StatItem label="Physics Loss" value={lastLog?.physics_loss ? lastLog.physics_loss.toExponential(4) : "0.00"} />
-        <StatItem label="Total Loss" value={lastLog?.total_loss ? lastLog.total_loss.toExponential(4) : "0.00"} />
+      <div className="space-y-4 relative z-10">
+        <StatItem label="Engine Status" value={status} icon={getStatusIcon()} highlight={status.includes('Training')} />
+        <StatItem label="Training Epoch" value={epoch?.toString() ?? '0'} valueColor="text-blue-400" />
+        <StatItem label="Physics Loss (PDE)" value={lastLog?.physics_loss ? lastLog.physics_loss.toExponential(4) : "0.00"} valueColor="text-indigo-400" />
+        <StatItem label="Total Loss" value={lastLog?.total_loss ? lastLog.total_loss.toExponential(4) : "0.00"} valueColor="text-purple-400" />
       </div>
     </div>
   );
 };
 
-const StatItem = ({ label, value, icon }: { label: string, value: string, icon?: React.ReactNode }) => (
-  <div className="flex justify-between items-center p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
-    <p className="text-xs text-slate-400">{label}</p>
-    <div className="flex items-center gap-2">
+const StatItem = ({ label, value, icon, highlight, valueColor = "text-slate-100" }: { label: string, value: string, icon?: React.ReactNode, highlight?: boolean, valueColor?: string }) => (
+  <motion.div
+    layout
+    className={`flex justify-between items-center p-4 rounded-2xl border transition-colors ${highlight ? 'bg-blue-500/10 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-slate-800/40 border-white/5'}`}
+  >
+    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</p>
+    <div className="flex items-center gap-3">
       {icon}
-      <p className="text-sm font-mono font-medium text-slate-100 truncate">{value}</p>
+      <p className={`text-sm font-mono font-semibold truncate ${valueColor}`}>{value}</p>
     </div>
-  </div>
+  </motion.div>
 );
 
 const LossChart = ({ logs }: { logs: LossLog[] }) => (
   <>
-    <h2 className="flex items-center gap-2 text-lg font-medium mb-8">
-      <Activity size={20} className="text-blue-500" />
-      Loss Convergence Profile
-    </h2>
-    <div className="h-[350px] w-full">
+    <div className="flex justify-between items-center mb-8 relative z-10">
+      <h2 className="flex items-center gap-3 text-lg font-semibold tracking-wide text-slate-200">
+        <Activity size={22} className="text-blue-500" />
+        Convergence Trajectory
+      </h2>
+      {logs.length > 0 && (
+        <span className="text-xs font-mono text-slate-500 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+          Epoch {logs[logs.length - 1].epoch}
+        </span>
+      )}
+    </div>
+    <div className="h-[380px] w-full relative z-10">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={logs}>
+        <AreaChart data={logs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorPhysics" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-          <XAxis dataKey="epoch" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
-          <YAxis stroke="#475569" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => val.toExponential(1)} type="number" domain={['auto', 'auto']} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.5} />
+          <XAxis dataKey="epoch" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickMargin={10} />
+          <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => val.toExponential(1)} type="number" domain={['auto', 'auto']} tickMargin={10} />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }} formatter={(value: any) => {
-            if (typeof value === 'number') return value.toExponential(4);
-            return value;
-          }} />
-          <Area type="monotone" dataKey="total_loss" name="Total Loss" stroke="#3b82f6" strokeWidth={2} fill="url(#colorTotal)" isAnimationActive={false} connectNulls />
-          <Area type="monotone" dataKey="physics_loss" name="Physics Loss" stroke="#6366f1" strokeWidth={2} fill="url(#colorPhysics)" isAnimationActive={false} connectNulls />
+          <Tooltip
+            contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+            itemStyle={{ fontSize: '13px', fontWeight: '500', fontFamily: 'monospace' }}
+            formatter={(value: any) => {
+              if (typeof value === 'number') return value.toExponential(4);
+              return value;
+            }}
+          />
+          <Area type="monotone" dataKey="total_loss" name="Total Loss" stroke="#8b5cf6" strokeWidth={3} fill="url(#colorTotal)" isAnimationActive={false} connectNulls />
+          <Area type="monotone" dataKey="physics_loss" name="Physics Loss" stroke="#3b82f6" strokeWidth={3} fill="url(#colorPhysics)" isAnimationActive={false} connectNulls />
         </AreaChart>
       </ResponsiveContainer>
     </div>
