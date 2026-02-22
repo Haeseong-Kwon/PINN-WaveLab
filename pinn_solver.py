@@ -6,13 +6,13 @@ from supabase import create_client, Client
 from dotenv import dotenv_values
 
 # .env 파일에서 환경 변수 로드
-env_vals = dotenv_values(dotenv_path='.env.loval')
+env_vals = dotenv_values(dotenv_path='.env.local')
 
 # --- Supabase 설정 ---
 # 환경 변수에서 Supabase 정보 가져오기
-# .env.loval 파일에 SUPABASE_URL="your_supabase_url" SUPABASE_ANON_KEY="your_supabase_anon_key" 형식으로 저장하거나 직접 입력
-url: str = env_vals.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
-key: str = env_vals.get("SUPABASE_ANON_KEY", "YOUR_SUPABASE_ANON_KEY")
+# .env.local 파일에 NEXT_PUBLIC_SUPABASE_URL="your_supabase_url" NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key" 형식으로 저장하거나 직접 입력
+url: str = env_vals.get("NEXT_PUBLIC_SUPABASE_URL", "YOUR_SUPABASE_URL")
+key: str = env_vals.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "YOUR_SUPABASE_ANON_KEY")
 
 # Supabase 클라이언트 생성 (연결 정보가 유효할 경우)
 supabase: Client = None

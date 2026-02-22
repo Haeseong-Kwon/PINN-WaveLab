@@ -181,7 +181,7 @@ const StatsPanel = ({ epoch, lastLog, status }: { epoch: number, lastLog: LossLo
       </h2>
       <div className="space-y-3">
         <StatItem label="Status" value={status} icon={getStatusIcon()} />
-        <StatItem label="Current Epoch" value={epoch.toString()} />
+        <StatItem label="Current Epoch" value={epoch?.toString() ?? '0'} />
         <StatItem label="Physics Loss" value={lastLog?.physics_loss ? lastLog.physics_loss.toExponential(4) : "0.00"} />
         <StatItem label="Total Loss" value={lastLog?.total_loss ? lastLog.total_loss.toExponential(4) : "0.00"} />
       </div>

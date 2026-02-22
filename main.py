@@ -71,7 +71,9 @@ def resample_collocation_points_3d(model, config):
     weights = torch.abs(residuals.squeeze()) + 1e-8
     probabilities = weights / torch.sum(weights)
     sampled_indices = torch.multinomial(probabilities, config.num_collocation_points, replacement=True)
-    return candidate_points[sampled_indices]
+    sampled_points = candidate_points[sampled_indices].detach()
+    sampled_points.requires_grad_(True)
+    return sampled_points
 def update_adaptive_weights_3loss(model, losses, optimizer, last_weights, momentum=0.9):
     grad_norms = {}
     for name, loss in losses.items():
@@ -97,6 +99,7 @@ def generate_pinn_wavefield_at_t(model, domain_size, resolution, t):
     model.train()
     return u_pred.cpu().numpy()
 class TrainingConfig(BaseModel):
+    k: float = 1.0
     c: float = 1.0
     epochs: int = 20000
     lr: float = 0.001
@@ -120,12 +123,14 @@ async def train_pinn_wave(websocket: WebSocket, config: TrainingConfig):
     optimizer = torch.optim.Adam(pinn_model.parameters(), lr=config.lr)
     loss_fn = nn.MSELoss()
     adaptive_weights = {'bc': torch.tensor(1.0), 'ic': torch.tensor(1.0), 'pde': torch.tensor(1.0)}
-    await websocket.send_text(json.dumps({"status": "solving_fdtd", "run_id": run_id}))
+    await websocket.send_text(json.dumps({"status": "solving_fdm", "run_id": run_id}))
     fdtd_steps = int(config.time_domain[1] / ((1/config.c) * (1/np.sqrt(1/((config.domain_size[0][1]-config.domain_size[0][0])/config.resolution)**2 * 2)) * 0.5))
     u_fdtd = solve_wave_equation_2d_fdtd(grid_points=config.resolution, c=config.c, time_steps=fdtd_steps)
-    await websocket.send_text(json.dumps({"status": "fdtd_solved"}))
+    await websocket.send_text(json.dumps({"status": "fdm_solved", "wavefield_ground_truth": u_fdtd[0].tolist()})) # Send first frame as preview or conform to expected key
+
     ic_points_spatial = (torch.rand(config.num_initial_points, 2, device=device) * 2 - 1)
     ic_points = torch.cat([ic_points_spatial, torch.zeros(config.num_initial_points, 1, device=device)], dim=1)
+    ic_points.requires_grad_(True)
     initial_u = torch.exp(-torch.sum(ic_points_spatial**2 / (2 * 0.1**2), dim=1, keepdim=True))
     initial_u_t = torch.zeros_like(initial_u)
     await websocket.send_text(json.dumps({"status": "starting_pinn_training", "config": config.dict()}))
@@ -136,13 +141,14 @@ async def train_pinn_wave(websocket: WebSocket, config: TrainingConfig):
         y_bc_wall = torch.rand(config.num_boundary_points // 2, 1, device=device) * 2 - 1
         x_bc = torch.cat([x_bc_wall, torch.ones_like(x_bc_wall), x_bc_wall, -torch.ones_like(x_bc_wall)], dim=0)
         y_bc = torch.cat([torch.ones_like(y_bc_wall), y_bc_wall, -torch.ones_like(y_bc_wall), y_bc_wall], dim=0)
-        bc_points = torch.cat([x_bc, y_bc, torch.cat([t_bc]*4, dim=0)], dim=1)
+        bc_points = torch.cat([x_bc, y_bc, torch.cat([t_bc]*2, dim=0)], dim=1)
         bc_values = torch.zeros(bc_points.shape[0], 1, device=device)
         if config.use_importance_sampling and epoch > 0 and epoch % 1000 == 0:
             await websocket.send_text(json.dumps({"status": f"resampling_points_at_epoch_{epoch}"}))
             collocation_points = resample_collocation_points_3d(pinn_model, config)
         else:
              collocation_points = torch.cat([torch.rand(config.num_collocation_points, 2, device=device) * 2 - 1, torch.rand(config.num_collocation_points, 1, device=device) * config.time_domain[1]], dim=1)
+             collocation_points.requires_grad_(True)
         loss_bc = loss_fn(pinn_model(bc_points), bc_values)
         loss_ic = initial_condition_loss(pinn_model, ic_points, initial_u, initial_u_t)
         loss_pde = physics_loss_wave(pinn_model, collocation_points, config.c)
