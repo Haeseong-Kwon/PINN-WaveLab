@@ -1,3 +1,6 @@
+![PINN WaveLab Dashboard](./assets/dashboard_full_view.gif)
+> **대시보드 조작 및 실시간 시뮬레이션 전체 시연**
+
 <div align="center">
   <img src="./assets/demo.gif" width="95%" />
   <br />
