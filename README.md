@@ -1,15 +1,18 @@
 <div align="center">
-  <img src="pinn_wavelab_demo.gif" width="92%" />
+  <img src="./assets/demo.gif" width="95%" />
   <br />
-  <h3>PINN-WaveLab: Neural Maxwell Solver Dynamic Demo</h3>
-  <p>Physics-Informed Neural Network(PINN)가 물리 법칙을 학습하며 2D 전자기파 산란 패턴을 실시간으로 재구성하는 시뮬레이션 과정입니다.</p>
+  <h3>PINN-WaveLab: High-Fidelity 2D Wave Propagation Animation</h3>
+  <p>Physics-Informed Neural Network(PINN)가 물리 법칙을 준수하며 전자기파 전파를 시뮬레이션하는 동적 과정(20 FPS)입니다.</p>
 </div>
 
 # [Research Report] PINN-WaveLab: Neural Maxwell Solver for Computational Electromagnetics & Metasurface Inverse Design
 
-## 0. Simulation Results Summary
-![Training & Convergence](./assets/demo.gif)
-> **SIREN 기반 PINN 모델의 학습 성능 및 손실 함수(Loss) 수렴도 시각화 결과**
+## 0. Simulation Analysis
+<div align="center">
+  <img src="pinn_wavelab_demo.gif" width="90%" />
+  <br />
+  <em>학습 초기 단계의 물리 법칙 수렴 및 손실 함수 변화 분석 시뮬레이션</em>
+</div>
 
 ## 1. Research Background & Motivation
 
