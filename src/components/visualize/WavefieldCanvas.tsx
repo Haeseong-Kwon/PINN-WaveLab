@@ -42,7 +42,7 @@ const WavefieldCanvas: React.FC<WavefieldCanvasProps> = ({ data, resolution, tit
     }, [data, resolution]);
 
     return (
-        <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col h-full">
+        <div className="bg-[#111114] border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col overflow-hidden">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wider">
                     <Layers size={16} /> {title || "Wavefield Predictor"}

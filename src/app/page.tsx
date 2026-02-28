@@ -152,13 +152,13 @@ const Dashboard = () => {
 
           {/* Wavefield Visualizers */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-blue-500/30 transition-colors duration-500">
-              <div className="h-[400px]">
+            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-blue-500/30 transition-colors duration-500 min-h-fit">
+              <div className="w-full">
                 <WavefieldCanvas data={pinnPrediction} resolution={64} title="PINN Reconstructed Field" />
               </div>
             </div>
-            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-indigo-500/30 transition-colors duration-500">
-              <div className="h-[400px]">
+            <div className="bg-slate-900/40 backdrop-blur-lg border border-white/5 rounded-3xl p-6 shadow-xl hover:border-indigo-500/30 transition-colors duration-500 min-h-fit">
+              <div className="w-full">
                 <WavefieldCanvas data={fdmGroundTruth} resolution={64} title="FDM Ground Truth (Reference)" />
               </div>
             </div>
