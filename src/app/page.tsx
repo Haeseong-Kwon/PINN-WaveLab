@@ -267,13 +267,13 @@ const LossChart = ({ logs }: { logs: LossLog[] }) => (
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.5} />
           <XAxis dataKey="epoch" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickMargin={10} />
           <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => val.toExponential(1)} type="number" domain={['auto', 'auto']} tickMargin={10} />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           <Tooltip
             contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
             itemStyle={{ fontSize: '13px', fontWeight: '500', fontFamily: 'monospace' }}
-            formatter={(value: any) => {
+            formatter={(value: unknown) => {
               if (typeof value === 'number') return value.toExponential(4);
-              return value;
+              if (Array.isArray(value)) return value.map(v => typeof v === 'number' ? v.toExponential(4) : v).join(', ');
+              return (value ?? '').toString();
             }}
           />
           <Area type="monotone" dataKey="total_loss" name="Total Loss" stroke="#8b5cf6" strokeWidth={3} fill="url(#colorTotal)" isAnimationActive={false} connectNulls />
