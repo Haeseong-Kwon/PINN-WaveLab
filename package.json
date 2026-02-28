@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
+    "@react-three/drei": "^9.102.0",
+    "@react-three/fiber": "^8.18.0",
     "@supabase/supabase-js": "^2.95.3",
     "framer-motion": "^12.34.0",
     "html2canvas": "^1.4.1",
